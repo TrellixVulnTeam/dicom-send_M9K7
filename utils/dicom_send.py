@@ -58,7 +58,26 @@ def prepare_work_dir_contents(infile, work_dir):
             with tarfile.open(infile, "r") as tar_obj:
                 log.info(f"Establishing input as tar file: {infile}")
                 exit_if_archive_empty(tar_obj)
-                tar_obj.extractall(work_dir)
+                def is_within_directory(directory, target):
+                    
+                    abs_directory = os.path.abspath(directory)
+                    abs_target = os.path.abspath(target)
+                
+                    prefix = os.path.commonprefix([abs_directory, abs_target])
+                    
+                    return prefix == abs_directory
+                
+                def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+                
+                    for member in tar.getmembers():
+                        member_path = os.path.join(path, member.name)
+                        if not is_within_directory(path, member_path):
+                            raise Exception("Attempted Path Traversal in Tar File")
+                
+                    tar.extractall(path, members, numeric_owner=numeric_owner) 
+                    
+                
+                safe_extract(tar_obj, work_dir)
 
         except tarfile.ReadError:
             log.exception(
